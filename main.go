@@ -7,7 +7,9 @@ package main
 import "C"
 
 import (
-	"fmt"
+	"github.com/jfreymuth/pulse"
+	"github.com/jfreymuth/pulse/proto"
+	"log"
 	"time"
 	"unsafe"
 )
@@ -19,8 +21,20 @@ import (
 // Super_R
 const pttKey = 134
 
+const micSourceIndex = 3
+
+var muted = true
+
+var pulseClient *pulse.Client
+
 func main() {
 	display := C.XOpenDisplay(nil)
+
+	var err error
+	pulseClient, err = pulse.NewClient()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	pttKeyByte := pttKey / 8
 	pttKeyBit := pttKey % 8
@@ -31,12 +45,25 @@ func main() {
 		keyArr := C.GoBytes(unsafe.Pointer(&keys), 32)
 
 		k := keyArr[pttKeyByte]
-		// for i, k := range keyArr {
+
 		mask := byte(1 << uint(pttKeyBit))
 		if (mask & k) == mask {
-			fmt.Printf("key %d is pressed\n", pttKeyBit+(pttKeyByte*8))
+			muteSource(micSourceIndex, false)
+		} else {
+			muteSource(micSourceIndex, true)
 		}
-		// }
 		time.Sleep(time.Millisecond * 10)
+	}
+}
+
+func muteSource(source int, mute bool) {
+	if mute != muted {
+		muteReq := proto.SetSourceMute{SourceIndex: 3, Mute: mute}
+		err := pulseClient.RawRequest(&muteReq, nil)
+		if err != nil {
+			log.Println(err)
+		}
+
+		muted = mute
 	}
 }
