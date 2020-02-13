@@ -38,16 +38,14 @@ func main() {
 
 	pttKeyByte := pttKey / 8
 	pttKeyBit := pttKey % 8
+	pttKeyMask := byte(1 << uint(pttKeyBit))
 
 	keys := [32]C.char{}
 	for {
 		C.XQueryKeymap(display, &keys[0])
 		keyArr := C.GoBytes(unsafe.Pointer(&keys), 32)
 
-		k := keyArr[pttKeyByte]
-
-		mask := byte(1 << uint(pttKeyBit))
-		if (mask & k) == mask {
+		if (pttKeyMask & keyArr[pttKeyByte]) == pttKeyMask {
 			muteSource(micSourceIndex, false)
 		} else {
 			muteSource(micSourceIndex, true)
