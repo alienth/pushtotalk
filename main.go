@@ -10,6 +10,7 @@ import (
 	"github.com/jfreymuth/pulse"
 	"github.com/jfreymuth/pulse/proto"
 	"log"
+	"os/exec"
 	"time"
 	"unsafe"
 )
@@ -62,6 +63,8 @@ func muteSource(source int, mute bool) {
 			log.Println(err)
 		}
 
+		cmd := exec.Command("aplay", "./ptt.wav")
+		cmd.Run()
 		muted = mute
 	}
 }
