@@ -7,12 +7,16 @@ package main
 import "C"
 
 import (
-	"github.com/jfreymuth/pulse"
-	"github.com/jfreymuth/pulse/proto"
+	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"time"
 	"unsafe"
+
+	"github.com/jfreymuth/pulse"
+	"github.com/jfreymuth/pulse/proto"
 )
 
 // Play a sound when coming out of idle.
@@ -32,6 +36,12 @@ func main() {
 	display := C.XOpenDisplay(nil)
 
 	var err error
+	execDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		log.Fatal(err)
+	}
+	soundPath = fmt.Sprintf("%s/%s", execDir, "ptt.wav")
+
 	pulseClient, err = pulse.NewClient()
 	if err != nil {
 		log.Fatal(err)
@@ -55,6 +65,8 @@ func main() {
 	}
 }
 
+var soundPath string
+
 func muteSource(source int, mute bool) {
 	if mute != muted {
 		muteReq := proto.SetSourceMute{SourceIndex: 3, Mute: mute}
@@ -63,7 +75,7 @@ func muteSource(source int, mute bool) {
 			log.Println(err)
 		}
 
-		cmd := exec.Command("aplay", "./ptt.wav")
+		cmd := exec.Command("aplay", soundPath)
 		cmd.Run()
 		muted = mute
 	}
