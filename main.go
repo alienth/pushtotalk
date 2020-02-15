@@ -69,7 +69,7 @@ var soundPath string
 
 func muteSource(source int, mute bool) {
 	if mute != muted {
-		muteReq := proto.SetSourceMute{SourceIndex: 3, Mute: mute}
+		muteReq := proto.SetSourceMute{SourceIndex: micSourceIndex, Mute: mute}
 		err := pulseClient.RawRequest(&muteReq, nil)
 		if err != nil {
 			log.Println(err)
