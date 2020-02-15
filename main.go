@@ -24,10 +24,6 @@ import (
 // Directly mute / unmute.
 // Have an 'idle', where we only check once per second.
 
-var muted = true
-
-var pulseClient *pulse.Client
-
 func main() {
 	micIndexFlag := flag.Int("mic-index", -1, "Source index of mic.")
 	micNameFlag := flag.String("mic-name", "", "Source name of mic.")
@@ -50,7 +46,7 @@ func main() {
 	}
 	soundPath := fmt.Sprintf("%s/%s", execDir, "ptt.wav")
 
-	pulseClient, err = pulse.NewClient()
+	pulseClient, err := pulse.NewClient()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -61,6 +57,8 @@ func main() {
 	} else {
 		muteReq.SourceName = micName
 	}
+
+	muted := false
 	setMute := func(mute bool) {
 		if mute != muted {
 			muteReq.Mute = mute
