@@ -7,6 +7,7 @@ package main
 import "C"
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -23,33 +24,46 @@ import (
 // Directly mute / unmute.
 // Have an 'idle', where we only check once per second.
 
-// Super_R
-const pttKey = 134
-
-const micSourceIndex = 3
-
 var muted = true
 
 var pulseClient *pulse.Client
 
 func main() {
-	display := C.XOpenDisplay(nil)
+	micIndexFlag := flag.Int("mic-index", -1, "Source index of mic.")
+	micNameFlag := flag.String("mic-name", "", "Source name of mic.")
+	keyCodeFlag := flag.Int("key-code", 134, "Key code of PTT key.")
+
+	flag.Parse()
+
+	micIndex := *micIndexFlag
+	micName := *micNameFlag
+	keyCode := *keyCodeFlag
+	if (micIndex == -1 && micName == "") || (micIndex != -1 && micName != "") {
+		fmt.Println("Must specify one of --mic-index or --mic-name.")
+		os.Exit(-1)
+	}
 
 	var err error
 	execDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		log.Fatal(err)
 	}
-	soundPath = fmt.Sprintf("%s/%s", execDir, "ptt.wav")
+	soundPath := fmt.Sprintf("%s/%s", execDir, "ptt.wav")
 
 	pulseClient, err = pulse.NewClient()
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	var muteReq proto.SetSourceMute
+	if micIndex != -1 {
+		muteReq.SourceIndex = uint32(micIndex)
+	} else {
+		muteReq.SourceName = micName
+	}
 	setMute := func(mute bool) {
 		if mute != muted {
-			muteReq := proto.SetSourceMute{SourceIndex: micSourceIndex, Mute: mute}
+			muteReq.Mute = mute
 			err := pulseClient.RawRequest(&muteReq, nil)
 			if err != nil {
 				log.Println(err)
@@ -61,6 +75,11 @@ func main() {
 		}
 	}
 
+	watchForKey(keyCode, setMute)
+}
+
+func watchForKey(pttKey int, callback func(bool)) {
+	display := C.XOpenDisplay(nil)
 	pttKeyByte := pttKey / 8
 	pttKeyBit := pttKey % 8
 	pttKeyMask := byte(1 << uint(pttKeyBit))
@@ -71,12 +90,11 @@ func main() {
 		keyArr := C.GoBytes(unsafe.Pointer(&keys), 32)
 
 		if (pttKeyMask & keyArr[pttKeyByte]) == pttKeyMask {
-			setMute(false)
+			callback(false)
 		} else {
-			setMute(true)
+			callback(true)
 		}
 		time.Sleep(time.Millisecond * 10)
 	}
-}
 
-var soundPath string
+}
