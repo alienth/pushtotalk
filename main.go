@@ -47,6 +47,20 @@ func main() {
 		log.Fatal(err)
 	}
 
+	setMute := func(mute bool) {
+		if mute != muted {
+			muteReq := proto.SetSourceMute{SourceIndex: micSourceIndex, Mute: mute}
+			err := pulseClient.RawRequest(&muteReq, nil)
+			if err != nil {
+				log.Println(err)
+			}
+
+			cmd := exec.Command("aplay", soundPath)
+			cmd.Run()
+			muted = mute
+		}
+	}
+
 	pttKeyByte := pttKey / 8
 	pttKeyBit := pttKey % 8
 	pttKeyMask := byte(1 << uint(pttKeyBit))
@@ -57,26 +71,12 @@ func main() {
 		keyArr := C.GoBytes(unsafe.Pointer(&keys), 32)
 
 		if (pttKeyMask & keyArr[pttKeyByte]) == pttKeyMask {
-			muteSource(micSourceIndex, false)
+			setMute(false)
 		} else {
-			muteSource(micSourceIndex, true)
+			setMute(true)
 		}
 		time.Sleep(time.Millisecond * 10)
 	}
 }
 
 var soundPath string
-
-func muteSource(source int, mute bool) {
-	if mute != muted {
-		muteReq := proto.SetSourceMute{SourceIndex: micSourceIndex, Mute: mute}
-		err := pulseClient.RawRequest(&muteReq, nil)
-		if err != nil {
-			log.Println(err)
-		}
-
-		cmd := exec.Command("aplay", soundPath)
-		cmd.Run()
-		muted = mute
-	}
-}
