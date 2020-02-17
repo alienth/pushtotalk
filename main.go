@@ -22,7 +22,8 @@ import (
 
 // Play a sound when coming out of idle.
 // Directly mute / unmute.
-// Have an 'idle', where we only check once per second.
+
+const idleTimeout = time.Minute * 10
 
 func main() {
 	micIndexFlag := flag.Int("mic-index", -1, "Source index of mic.")
@@ -83,16 +84,25 @@ func watchForKey(pttKey int, callback func(bool)) {
 	pttKeyMask := byte(1 << uint(pttKeyBit))
 
 	keys := [32]C.char{}
+	activePollingInterval := time.Millisecond * 10
+	idlePollingInterval := time.Millisecond * 500
+	pollingInterval := activePollingInterval
+	lastPush := time.Now()
 	for {
 		C.XQueryKeymap(display, &keys[0])
 		keyArr := C.GoBytes(unsafe.Pointer(&keys), 32)
 
 		if (pttKeyMask & keyArr[pttKeyByte]) == pttKeyMask {
 			callback(false)
+			lastPush = time.Now()
+			pollingInterval = activePollingInterval
 		} else {
 			callback(true)
 		}
-		time.Sleep(time.Millisecond * 10)
+		if time.Now().Sub(lastPush).Milliseconds() > idleTimeout.Milliseconds() {
+			pollingInterval = idlePollingInterval
+		}
+		time.Sleep(pollingInterval)
 	}
 
 }
